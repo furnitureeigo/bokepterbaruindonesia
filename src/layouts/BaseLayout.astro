@@ -1,6 +1,6 @@
 ---
 // src/layouts/BaseLayout.astro
-import { desk, nama, url } from '../utils/site';
+import { desk, nama, url, google, yandex } from '../utils/site';
 export interface Props {
   title: string;
   description: string;
@@ -90,7 +90,8 @@ const combinedJsonLdSchemas = [
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImageFullUrl} />
-    
+    <meta name="google-site-verification" content={google} />
+    <meta name="yandex-verification" content={yandex} />
     {preconnectDomains.map(domain => (
       <link rel="preconnect" href={domain} crossorigin/>
     ))}
