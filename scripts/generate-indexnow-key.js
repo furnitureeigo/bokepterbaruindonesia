@@ -15,7 +15,7 @@ async function generateIndexNowKeyFile() {
     const filesInPublic = await fs.readdir(PUBLIC_DIR);
     const existingKeyFile = filesInPublic.find(file => 
       file.endsWith('.txt') && 
-      /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}\.txt$/.test(file) // Regex untuk UUID v4, tapi juga cocok untuk v1
+      /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\.txt$/.test(file)
     );
 
     if (existingKeyFile) {
