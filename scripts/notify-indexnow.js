@@ -3,7 +3,7 @@ import fetch from 'node-fetch';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { url } from '../src/utils/site.js';
+import { index, url } from '../src/utils/site.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,45 +19,23 @@ function slugify(text) {
     .replace(/[^\w-]+/g, '')
     .replace(/--+/g, '-');
 }
-// --- Akhir Fungsi slugify ---
 
-// --- Konfigurasi Anda - Sekarang ambil dari variabel lingkungan ---
 const YOUR_DOMAIN = url;
-const PUBLIC_DIR = 'public'; // Must match the PUBLIC_DIR in generate-indexnow-key.js
+const API_KEY_NAME = index;
 const INDEXNOW_ENDPOINT = 'https://api.indexnow.org/IndexNow';
-// --- Akhir Konfigurasi ---
 
 if (!YOUR_DOMAIN) {
-  console.error("Error: PUBLIC_SITE_URL is not defined in environment variables for IndexNow script. Please check your .env file.");
+  console.error("Error: PUBLIC_SITE_URL is not defined for IndexNow");
   process.exit(1);
 }
 
-// Path langsung ke file videos.json Anda
-const VIDEOS_JSON_PATH = path.resolve(__dirname, '../src/data/videos.json');
-// Path ke cache URL terakhir yang dikirim (akan disimpan di root proyek)
-const LAST_SENT_URLS_CACHE = path.resolve(__dirname, '../.indexnow_cache.json');
-
-async function getIndexNowKey() {
-  try {
-    const filesInPublic = await fs.readdir(PUBLIC_DIR);
-    const existingKeyFile = filesInPublic.find(file =>
-      file.endsWith('.txt') &&
-      /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\.txt$/.test(file)
-    );
-
-    if (existingKeyFile) {
-      const apiKeyName = existingKeyFile.replace('.txt', '');
-      console.log(`Found IndexNow key file: ${existingKeyFile}`);
-      return apiKeyName;
-    } else {
-      console.error('IndexNow key file not found in public directory. Please run generate-indexnow-key.js first.');
-      process.exit(1);
-    }
-  } catch (error) {
-    console.error(`Error reading public directory for IndexNow key: ${error.message}`);
+if (!API_KEY_NAME) {
+    console.error("Error: IndexNow API Key is not defined");
     process.exit(1);
-  }
 }
+
+const VIDEOS_JSON_PATH = path.resolve(__dirname, '../src/data/videos.json');
+const LAST_SENT_URLS_CACHE = path.resolve(__dirname, '../.indexnow_cache.json');
 
 async function getAllVideoUrls() {
   try {
@@ -79,21 +57,21 @@ async function getAllVideoUrls() {
   }
 }
 
-async function sendToIndexNow(urlsToSend, API_KEY_NAME) {
+async function sendToIndexNow(urlsToSend, keyName) {
   if (urlsToSend.length === 0) {
     console.log('Tidak ada URL baru atau yang diperbarui untuk dikirim ke IndexNow.');
     return;
   }
 
-  const API_KEY_LOCATION = `${YOUR_DOMAIN}/${API_KEY_NAME}.txt`;
-
+  const API_KEY_LOCATION = `${YOUR_DOMAIN}/${keyName}.txt`;
   const chunkSize = 10000;
+
   for (let i = 0; i < urlsToSend.length; i += chunkSize) {
     const chunk = urlsToSend.slice(i, i + chunkSize);
 
     const payload = {
       host: new URL(YOUR_DOMAIN).hostname,
-      key: API_KEY_NAME,
+      key: keyName,
       keyLocation: API_KEY_LOCATION,
       urlList: chunk,
     };
@@ -122,7 +100,13 @@ async function sendToIndexNow(urlsToSend, API_KEY_NAME) {
 }
 
 async function main() {
-  const API_KEY_NAME = await getIndexNowKey(); // Get the API key before proceeding
+  if (!API_KEY_NAME || typeof API_KEY_NAME !== 'string' || API_KEY_NAME.length !== 36) {
+      console.error("Error: IndexNow API Key is invalid or missing.");
+      process.exit(1);
+  }
+  
+  console.log(`Using IndexNow key from site.js: ${API_KEY_NAME}`);
+
   const currentUrls = await getAllVideoUrls();
   let lastSentUrls = [];
 
@@ -135,7 +119,7 @@ async function main() {
 
   const urlsToSubmit = currentUrls.filter(url => !lastSentUrls.includes(url));
 
-  await sendToIndexNow(urlsToSubmit, API_KEY_NAME); // Pass API_KEY_NAME to sendToIndexNow
+  await sendToIndexNow(urlsToSubmit, API_KEY_NAME);
 
   try {
     await fs.writeFile(LAST_SENT_URLS_CACHE, JSON.stringify(currentUrls), 'utf-8');
